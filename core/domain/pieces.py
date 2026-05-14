@@ -140,7 +140,7 @@ class Rook(Piece):
             else:
                 break
             
-            
+        return moves
             
 
 class Knight(Piece):
@@ -148,26 +148,228 @@ class Knight(Piece):
         super().__init__(color, PieceType.KNIGHT, position)
 
     def valid_moves(self, board):
-        pass
+        moves = []
+        row, col = self.position
+        
+        possible = [
+            (row+2, col+1), (row+2, col-1),
+            (row-2, col+1), (row-2, col-1),
+            (row+1, col+2), (row+1, col-2),
+            (row-1, col+2), (row-1, col-2)
+        ]
+        
+        for pos in possible:
+            self.add_if_empty(moves, board, pos)
+            self.add_if_enemy(moves, board, pos)
+        
+        return moves    
+
 
 class Bishop(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.BISHOP, position) 
 
     def valid_moves(self, board):
-        pass
+        moves = []
+        row, col = self.position
+        
+        # derecha
+        for i in range(1, 8):
+            pos = (row + i, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+            
+        # izquierda  
+        for i in range(1, 8):
+            pos = (row +i, col - i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # abajo
+        for i in range(1, 8):
+            pos = (row - i, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # arriba
+        for i in range(1, 8):
+            pos = (row - i, col- i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+        
+        return moves
 
 class Queen(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.QUEEN, position) 
 
     def valid_moves(self, board):
-        pass
+        moves = []
+        row, col = self.position
+        
+        # derecha
+        for i in range(1, 8):
+            pos = (row + i, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+            
+        # izquierda  
+        for i in range(1, 8):
+            pos = (row +i, col - i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # abajo
+        for i in range(1, 8):
+            pos = (row - i, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # arriba
+        for i in range(1, 8):
+            pos = (row - i, col- i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+        
+        # derecha
+        for i in range(1, 8):
+            pos = (row, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+            
+        # izquierda  
+        for i in range(1, 8):
+            pos = (row, col - i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # abajo
+        for i in range(1, 8):
+            pos = (row + i, col)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # arriba
+        for i in range(1, 8):
+            pos = (row - i, col)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+            
+        return moves
 
 class King(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.KING, position) 
 
     def valid_moves(self, board):
-        pass    
-
+        moves = []
+        row, col = self.position
+        
+        possible = [
+            (row+1, col), (row-1, col),
+            (row, col+1), (row, col-1),
+            (row+1, col+1), (row+1, col-1),
+            (row-1, col+1), (row-1, col-1)
+        ]
+        
+        for pos in possible:
+            self.add_if_empty(moves, board, pos)
+            self.add_if_enemy(moves, board, pos)
+        
+        return moves    
