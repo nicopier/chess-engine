@@ -13,3 +13,7 @@ class Board():
         for col in range(8):
             self.board[1][col] = Pawn(Color.WHITE, (1, col))
             self.board[6][col] = Pawn(Color.BLACK, (6, col))
+            
+    def get_pieces_at(self, position:tuple[int, int]):
+        row, col = position
+        return self.board[row][col] 
