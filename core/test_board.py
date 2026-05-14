@@ -1,13 +1,12 @@
-from domain.board import Board
+from domain.game import Game
 
-board = Board()
+game = Game()
 
-# Testeamos algunas piezas
-print(board.get_piece_at((0, 0)))  # Rook blanca
-print(board.get_piece_at((0, 4)))  # King blanco
-print(board.get_piece_at((7, 3)))  # Queen negra
-print(board.get_piece_at((1, 3)))  # Pawn blanco
+# Mover peón blanco de (1,0) a (2,0)
+print(game.make_move((1, 0), (2, 0)))  # True
+print(game.board.get_piece_at((2, 0)))  # white pawn at (2, 0)
+print(game.board.get_piece_at((1, 0)))  # None
+print(game.current_turn)               # Color.BLACK
 
-# Testeamos movimientos
-knight = board.get_piece_at((0, 1))
-print(knight.valid_moves(board))   # Movimientos del caballo blanco
+# Intentar mover blanco de nuevo (es turno negro)
+print(game.make_move((2, 0), (3, 0)))  # False
