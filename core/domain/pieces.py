@@ -24,6 +24,26 @@ class Piece:
     
     def move(self, new_position:tuple[int,int]):
         self.position = new_position
+    
+    def is_valid_position(self, position: tuple[int, int]) -> bool:
+        row, col = position
+        return 0 <= row <= 7 and 0 <= col <= 7
+    
+    def add_if_empty(self, moves: list, board, position: tuple[int, int]):
+        if not self.is_valid_position(position):
+            return
+        piece = board.get_piece_at(position)
+        if piece is None:
+            moves.append(position)
+    
+    def add_if_enemy(self, moves: list, board, position: tuple[int, int]):
+        if not self.is_valid_position(position):
+            return
+        piece = board.get_piece_at(position)
+        if piece is not None and piece.color != self.color:
+            moves.append(position)
+    
+    
         
 class Pawn(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
@@ -33,17 +53,121 @@ class Pawn(Piece):
         moves = []
         row, col = self.position
         if self.color == Color.WHITE:
-            moves.append((row+1, col))
-            if row == 2:
-                moves.append((row+2, col))
+            self.add_if_empty(moves, board, (row+1, col))
+        
+            if row == 1 and board.get_piece_at((row+1, col)) is None: 
+                self.add_if_empty(moves, board, (row+2, col))
+            
+            self.add_if_enemy(moves, board, (row+1, col-1))
+            self.add_if_enemy(moves, board, (row+1, col+1))
+            
                 
         elif self.color == Color.BLACK:
-            moves.append((row-1, col))
-            if row == 7:
-                moves.append((row-2, col))
+            self.add_if_empty(moves, board, (row-1, col))
+            if row == 6 and board.get_piece_at((row-1, col)) is None:
+                self.add_if_empty(moves, board, (row-2, col))
 
+            self.add_if_enemy(moves, board, (row-1, col-1))
+            self.add_if_enemy(moves, board, (row-1, col+1))
+        
+        return moves
+        
                 
+                
+                
+
+class Rook(Piece):
+    def __init__(self, color:Color, position:tuple[int, int]):
+        super().__init__(color, PieceType.ROOK, position)
+        
+    def valid_moves(self, board):
+        moves = []
+        row, col = self.position
+        
+        # derecha
+        for i in range(1, 8):
+            pos = (row, col + i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
             
-        
-        
+        # izquierda  
+        for i in range(1, 8):
+            pos = (row, col - i)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # abajo
+        for i in range(1, 8):
+            pos = (row + i, col)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+
+        # arriba
+        for i in range(1, 8):
+            pos = (row - i, col)
+            if not self.is_valid_position(pos):
+                break
+            piece = board.get_piece_at(pos)
+            if piece is None:
+                moves.append(pos)
+            elif piece.color != self.color:
+                moves.append(pos)
+                break
+            else:
+                break
+            
+            
+            
+
+class Knight(Piece):
+    def __init__(self, color:Color, position:tuple[int, int]):
+        super().__init__(color, PieceType.KNIGHT, position)
+
+    def valid_moves(self, board):
         pass
+
+class Bishop(Piece):
+    def __init__(self, color:Color, position:tuple[int, int]):
+        super().__init__(color, PieceType.BISHOP, position) 
+
+    def valid_moves(self, board):
+        pass
+
+class Queen(Piece):
+    def __init__(self, color:Color, position:tuple[int, int]):
+        super().__init__(color, PieceType.QUEEN, position) 
+
+    def valid_moves(self, board):
+        pass
+
+class King(Piece):
+    def __init__(self, color:Color, position:tuple[int, int]):
+        super().__init__(color, PieceType.KING, position) 
+
+    def valid_moves(self, board):
+        pass    
+
