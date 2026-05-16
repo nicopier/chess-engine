@@ -2,11 +2,23 @@ from fastapi import FastAPI
 from domain.game import Game
 from pydantic import BaseModel
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
+
+
 class MoveRequest(BaseModel):
     from_pos: tuple[int, int]
     to_pos: tuple[int, int]
     
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 game = Game()
 
 @app.get("/")
