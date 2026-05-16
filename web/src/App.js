@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 function App() {
   const[board, setBoard] = useState([]);
+  const [selectedPiece, setSelectedPiece] = useState(null);
   useEffect(() => {
     fetch('http://localhost:8000/board')
     .then(response => response.json())
@@ -26,6 +27,28 @@ function App() {
     return board.find(p => p.position[0] === row && p.position[1] === col);
   }
 
+  function handleClick(row, col) {
+  if (selectedPiece === null) {
+    const piece = getPieceAt(row, col);
+    if (piece) setSelectedPiece([row, col]);
+  } else {
+    // mandar movimiento a la API
+    fetch('http://localhost:8000/move', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({from_pos: selectedPiece, to_pos: [row, col]})
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        fetch('http://localhost:8000/board')
+          .then(response => response.json())
+          .then(data => setBoard(data));
+      }
+      setSelectedPiece(null);
+    });
+  }
+}
   return (
     <div>
       <h1>Chess Engine</h1>
@@ -35,7 +58,7 @@ function App() {
             const piece = getPieceAt(row, col);
             const isLight = (row + col) % 2 === 0;
             return (
-              <div key={`${row}-${col}`} style={{
+              <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
                 width: 60,
                 height: 60,
                 backgroundColor: isLight ? '#f0d9b5' : '#b58863',
