@@ -51,3 +51,7 @@ def make_move(move: MoveRequest):
                 "black_in_check": game.black_in_check
                 }
     return {"success": False}
+
+@app.get("/history")
+def get_history():
+    return game.move_history

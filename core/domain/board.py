@@ -58,3 +58,22 @@ class Board():
                     if king_position in piece.valid_moves(self):
                         return True
         return False
+    
+    def to_fen(self, current_turn: Color):
+        final_fen = ""
+        for row in reversed(self.board): #se recorren al revez las piezas en el tablero para que la fila 8 sea la primera en el fen
+            row_fen = ""
+            none_escaques = 0
+            for piece in row:
+                if piece is None:
+                    none_escaques += 1
+                else:
+                    if none_escaques > 0:
+                        row_fen += str(none_escaques)
+                        none_escaques = 0
+                    row_fen += piece.notation.value if piece.color == Color.WHITE else piece.notation.value.lower()
+            if none_escaques > 0:
+                row_fen += str(none_escaques)
+            final_fen += row_fen + "/"
+        turn = "w" if current_turn == Color.WHITE else "b"
+        return final_fen.rstrip("/") + f" {turn}"

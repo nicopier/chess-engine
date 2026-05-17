@@ -2,11 +2,13 @@ from .board import Board
 from .pieces import Pawn, Color, Rook, Knight, Bishop, Queen, King
 
 class Game():
-    def __init__(self):
+    def __init__(self, move_history: list = None):
         self.board = Board()
         self.current_turn = Color.WHITE
         self.white_in_check = False
         self.black_in_check = False
+        
+        self.move_history = move_history if move_history is not None else []
         
     def make_move(self, from_pos:tuple[int, int], to_pos:tuple[int, int]):
         piece = self.board.get_piece_at(from_pos)
@@ -37,5 +39,17 @@ class Game():
         #checkea globalemnte si ahy jaque para ambos jugadores
         self.white_in_check = self.board.is_in_check(Color.WHITE)
         self.black_in_check = self.board.is_in_check(Color.BLACK)
+        
+        #guardamos el movimiento en el historial
+        
+        self.move_history.append({
+                                    "from_pos": from_pos,
+                                    "to_pos": to_pos,
+                                    "piece": piece.piece_type.value,
+                                    "color": piece.color.value,
+                                    "captured": captured_piece.piece_type.value if captured_piece else None,
+                                    "fen": self.board.to_fen(self.current_turn)
+                                })
         return True
+    
     

@@ -12,12 +12,20 @@ class PieceType(Enum):
     QUEEN = "queen"
     KING = "king"
     
+class PieceNotation(Enum):
+    PAWN = "P"
+    KNIGHT = "N"
+    BISHOP = "B"
+    ROOK = "R"
+    QUEEN = "Q"
+    KING = "K"    
 
 class Piece:
-    def __init__(self, color:Color, piece_type:PieceType, position:tuple[int, int]):
+    def __init__(self, color:Color, piece_type:PieceType, position:tuple[int, int], notation:PieceNotation):
         self.color = color
         self.position = position
-        self.piece_type = piece_type 
+        self.piece_type = piece_type
+        self.notation = notation
         
     def __repr__(self): #funcion para printear la pieza de manera legible
         return f"{self.color.value} {self.piece_type.value} at {self.position}" 
@@ -47,7 +55,7 @@ class Piece:
         
 class Pawn(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.PAWN, position)
+        super().__init__(color, PieceType.PAWN, position, PieceNotation.PAWN)
         
     def valid_moves(self, board:'Board'):
         moves = []
@@ -76,7 +84,7 @@ class Pawn(Piece):
 
 class Rook(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.ROOK, position)
+        super().__init__(color, PieceType.ROOK, position, PieceNotation.ROOK)
         
     def valid_moves(self, board:'Board'):
         moves = []
@@ -143,7 +151,7 @@ class Rook(Piece):
 
 class Knight(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.KNIGHT, position)
+        super().__init__(color, PieceType.KNIGHT, position, PieceNotation.KNIGHT)
 
     def valid_moves(self, board:'Board'):
         moves = []
@@ -165,7 +173,7 @@ class Knight(Piece):
 
 class Bishop(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.BISHOP, position) 
+        super().__init__(color, PieceType.BISHOP, position, PieceNotation.BISHOP)
 
     def valid_moves(self, board:'Board'):
         moves = []
@@ -231,7 +239,7 @@ class Bishop(Piece):
 
 class Queen(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.QUEEN, position) 
+        super().__init__(color, PieceType.QUEEN, position, PieceNotation.QUEEN)
 
     def valid_moves(self, board:'Board'):
         moves = []
@@ -353,7 +361,7 @@ class Queen(Piece):
 
 class King(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
-        super().__init__(color, PieceType.KING, position) 
+        super().__init__(color, PieceType.KING, position, PieceNotation.KING)
 
     def valid_moves(self, board:'Board'):
         moves = []
