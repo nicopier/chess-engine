@@ -37,3 +37,24 @@ class Board():
     def get_piece_at(self, position:tuple[int, int]):
         row, col = position
         return self.board[row][col] 
+    
+    def find_king(self, color: Color):
+        for row in range(8):
+            for col in range(8):
+                piece_position = (row, col)
+                piece = self.get_piece_at(piece_position)
+                if piece and isinstance(piece, King) and piece.color == color:
+                    return piece_position
+    
+    def is_in_check(self, color: Color):
+        king_position = self.find_king(color)
+        opponent_color = Color.BLACK if color == Color.WHITE else Color.WHITE
+        
+        for row in range(8):
+            for col in range(8):
+                piece_position = (row, col)
+                piece = self.get_piece_at(piece_position)
+                if piece and piece.color == opponent_color:
+                    if king_position in piece.valid_moves(self):
+                        return True
+        return False

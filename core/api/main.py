@@ -45,5 +45,9 @@ def make_move(move: MoveRequest):
     print(piece.valid_moves(game.board))
     result = game.make_move(move.from_pos, move.to_pos)
     if result:
-        return {"success": True, "turn": game.current_turn.value}
+        return {"success": True,
+                "turn": game.current_turn.value,
+                "white_in_check": game.white_in_check,
+                "black_in_check": game.black_in_check
+                }
     return {"success": False}
