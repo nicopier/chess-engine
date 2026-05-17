@@ -5,7 +5,9 @@ function App() {
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [whiteInCheck, setWhiteInCheck] = useState(false);
   const [blackInCheck, setBlackInCheck] = useState(false);
-
+  const [flipped, setFlipped] = useState(false);
+  const rows = flipped ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  const cols = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
   useEffect(() => {
     fetch('http://localhost:8000/board')
     .then(response => response.json())
@@ -57,9 +59,10 @@ function App() {
   return (
     <div>
       <h1>Chess Engine</h1>
+      <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
       <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 60px)'}}>
-        {[7,6,5,4,3,2,1,0].flatMap(row =>
-          [0,1,2,3,4,5,6,7].map(col => {
+        {rows.flatMap(row =>
+          cols.map(col => {
             const piece = getPieceAt(row, col);
             const isLight = (row + col) % 2 === 0;
             const isKingInCheck = piece && piece.type === 'king' && 
