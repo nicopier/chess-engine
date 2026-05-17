@@ -72,9 +72,7 @@ class Pawn(Piece):
         
         return moves
         
-                
-                
-                
+     
 
 class Rook(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):

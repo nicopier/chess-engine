@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react';
 function App() {
   const[board, setBoard] = useState([]);
   const [selectedPiece, setSelectedPiece] = useState(null);
+  const [whiteInCheck, setWhiteInCheck] = useState(false);
+  const [blackInCheck, setBlackInCheck] = useState(false);
+
   useEffect(() => {
     fetch('http://localhost:8000/board')
     .then(response => response.json())
@@ -41,6 +44,8 @@ function App() {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
+        setWhiteInCheck(data.white_in_check);
+        setBlackInCheck(data.black_in_check);
         fetch('http://localhost:8000/board')
           .then(response => response.json())
           .then(data => setBoard(data));
@@ -57,11 +62,13 @@ function App() {
           [0,1,2,3,4,5,6,7].map(col => {
             const piece = getPieceAt(row, col);
             const isLight = (row + col) % 2 === 0;
+            const isKingInCheck = piece && piece.type === 'king' && 
+            ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
             return (
               <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
                 width: 60,
                 height: 60,
-                backgroundColor: isLight ? '#f0d9b5' : '#b58863',
+                backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
               }}>
                 {piece && <img src={getPieceImage(piece)} alt={piece.type} width={60} height={60} />}
               </div>
