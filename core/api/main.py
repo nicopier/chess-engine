@@ -69,3 +69,16 @@ def reset_game():
     global game
     game = Game()
     return {"success": True}
+
+@app.post("/goto/last")
+def goto_last():
+    game.current_position = len(game.move_history)
+    return {"success": True}
+
+@app.post("/goto/{index}")
+def goto_position(index: int):
+    if index < 0 or index > len(game.move_history):
+        return {"success": False}
+    game.current_position = index
+    return {"success": True, "fen": game.move_history[index - 1]["fen"] if index > 0 else None}
+

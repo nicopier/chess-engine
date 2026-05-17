@@ -100,10 +100,51 @@ class Board():
                     if to_pos in other.valid_moves(self):
                         same_type.append((row, col))
         
+        # enroque
+        if piece.piece_type == PieceType.KING:
+            if to_pos[1] - from_pos[1] == 2:
+                return "O-O"
+            elif to_pos[1] - from_pos[1] == -2:
+                return "O-O-O"
+        
         disambiguation = ""
         if same_type:
             disambiguation = cols[from_pos[1]]
         
         capture = "x" if captured_piece else ""
         return piece_letter + disambiguation + capture + destination
+    
+    def is_square_attacked(self, position: tuple[int, int], color: Color) -> bool:
+        opponent_color = Color.BLACK if color == Color.WHITE else Color.WHITE
+        for row in range(8):
+            for col in range(8):
+                piece = self.get_piece_at((row, col))
+                if piece and piece.color == opponent_color:
+                    if position in piece.valid_moves(self):
+                        return True
+        return False
             
+    def can_castle_kingside(self, color: Color) -> bool:
+        row = 0 if color == Color.WHITE else 7
+        king = self.get_piece_at((row, 4))
+        rook = self.get_piece_at((row, 7))
+        return (king and not king.has_moved and
+                rook and not rook.has_moved and
+                self.get_piece_at((row, 5)) is None and
+                self.get_piece_at((row, 6)) is None and
+                not self.is_square_attacked((row, 4), color) and  # rey no en jaque
+                not self.is_square_attacked((row, 5), color) and  # no pasa por casilla atacada
+                not self.is_square_attacked((row, 6), color))     # destino no atacado
+
+    def can_castle_queenside(self, color: Color) -> bool:
+        row = 0 if color == Color.WHITE else 7
+        king = self.get_piece_at((row, 4))
+        rook = self.get_piece_at((row, 0))
+        return (king and not king.has_moved and
+                rook and not rook.has_moved and
+                self.get_piece_at((row, 1)) is None and
+                self.get_piece_at((row, 2)) is None and
+                self.get_piece_at((row, 3)) is None and
+                not self.is_square_attacked((row, 4), color) and # rey no en jaque
+                not self.is_square_attacked((row, 2), color) and # no pasa por casilla atacada
+                not self.is_square_attacked((row, 3), color))    # destino no atacado

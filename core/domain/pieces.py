@@ -26,12 +26,14 @@ class Piece:
         self.position = position
         self.piece_type = piece_type
         self.notation = notation
+        self.has_moved = False
         
     def __repr__(self): #funcion para printear la pieza de manera legible
         return f"{self.color.value} {self.piece_type.value} at {self.position}" 
     
     def move(self, new_position:tuple[int,int]):
         self.position = new_position
+        self.has_moved = True
     
     def is_valid_position(self, position: tuple[int, int]) -> bool:
         row, col = position
@@ -57,29 +59,35 @@ class Pawn(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.PAWN, position, PieceNotation.PAWN)
         
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board, en_passant_target=None):
         moves = []
         row, col = self.position
         if self.color == Color.WHITE:
             self.add_if_empty(moves, board, (row+1, col))
-        
             if row == 1 and board.get_piece_at((row+1, col)) is None: 
                 self.add_if_empty(moves, board, (row+2, col))
-            
             self.add_if_enemy(moves, board, (row+1, col-1))
             self.add_if_enemy(moves, board, (row+1, col+1))
-            
+            # en passant
+            if en_passant_target and en_passant_target == (row+1, col-1):
+                moves.append((row+1, col-1))
+            if en_passant_target and en_passant_target == (row+1, col+1):
+                moves.append((row+1, col+1))
                 
         elif self.color == Color.BLACK:
             self.add_if_empty(moves, board, (row-1, col))
             if row == 6 and board.get_piece_at((row-1, col)) is None:
                 self.add_if_empty(moves, board, (row-2, col))
-
             self.add_if_enemy(moves, board, (row-1, col-1))
             self.add_if_enemy(moves, board, (row-1, col+1))
+            # en passant
+            if en_passant_target and en_passant_target == (row-1, col-1):
+                moves.append((row-1, col-1))
+            if en_passant_target and en_passant_target == (row-1, col+1):
+                moves.append((row-1, col+1))
         
         return moves
-        
+            
      
 
 class Rook(Piece):
@@ -374,8 +382,15 @@ class King(Piece):
             (row-1, col+1), (row-1, col-1)
         ]
         
+        if board.can_castle_kingside(self.color):
+            moves.append((row, 6))
+        if board.can_castle_queenside(self.color):
+            moves.append((row, 2))
+        
         for pos in possible:
             self.add_if_empty(moves, board, pos)
             self.add_if_enemy(moves, board, pos)
+        
+        
         
         return moves    
