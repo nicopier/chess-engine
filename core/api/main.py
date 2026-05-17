@@ -46,8 +46,6 @@ def get_board():
 @app.post("/move")
 def make_move(move: MoveRequest):
     piece = game.board.get_piece_at(move.from_pos)
-    print(piece)
-    print(piece.valid_moves(game.board))
     result = game.make_move(move.from_pos, move.to_pos)
     if result:
         return {"success": True,

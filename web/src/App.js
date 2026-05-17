@@ -53,6 +53,12 @@ function App() {
     const piece = getPieceAt(row, col);
     if (piece) setSelectedPiece([row, col]);
   } else {
+    const clickedPiece = getPieceAt(row, col);
+    const selectedPieceObj = getPieceAt(selectedPiece[0], selectedPiece[1]);
+    if (clickedPiece && clickedPiece.color === selectedPieceObj?.color) {
+      setSelectedPiece([row, col]);
+      return;
+    }
     // mandar movimiento a la API
     fetch('http://localhost:8000/move', {
       method: 'POST',
@@ -109,14 +115,12 @@ function App() {
           return pairs;
         }, []).map((pair, index) => (
           <div key={index} style={{padding: '4px'}}>
-            {index + 1}. {pair[0].piece} → {pair[0].to_pos[0]},{pair[0].to_pos[1]}
-            {pair[1] && ` | ${pair[1].piece} → ${pair[1].to_pos[0]},${pair[1].to_pos[1]}`}
+            {index + 1}. {pair[0].san}
+            {pair[1] && ` | ${pair[1].san}`}
           </div>
         ))}
       </div>
     </div>
   );
-
 }
-
 export default App;

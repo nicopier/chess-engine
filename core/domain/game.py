@@ -54,7 +54,8 @@ class Game():
                                     "piece": piece.piece_type.value,
                                     "color": piece.color.value,
                                     "captured": captured_piece.piece_type.value if captured_piece else None,
-                                    "fen": self.board.to_fen(self.current_turn)
+                                    "fen": self.board.to_fen(self.current_turn),
+                                    "san": self.board.to_san(piece, from_pos, to_pos, captured_piece)
                                 })
         return True
     

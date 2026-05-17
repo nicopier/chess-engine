@@ -1,4 +1,4 @@
-from .pieces import Pawn, Color, Rook, Knight, Bishop, Queen, King
+from .pieces import Pawn, Color, Rook, Knight, Bishop, Queen, King, PieceType
 
 class Board():
     def __init__(self):
@@ -77,3 +77,33 @@ class Board():
             final_fen += row_fen + "/"
         turn = "w" if current_turn == Color.WHITE else "b"
         return final_fen.rstrip("/") + f" {turn}"
+    
+    def to_san(self, piece, from_pos, to_pos, captured_piece):
+        cols = ['a','b','c','d','e','f','g','h']
+        col_letter = cols[to_pos[1]]
+        row_number = str(to_pos[0] + 1)
+        destination = col_letter + row_number
+        
+        # peón
+        if piece.piece_type == PieceType.PAWN:
+            if captured_piece:
+                return cols[from_pos[1]] + 'x' + destination
+            return destination
+        
+        # disambiguación - buscar si hay otra pieza del mismo tipo que puede ir al mismo destino
+        piece_letter = piece.notation.value
+        same_type = []
+        for row in range(8):
+            for col in range(8):
+                other = self.get_piece_at((row, col))
+                if other and other != piece and type(other) == type(piece) and other.color == piece.color:
+                    if to_pos in other.valid_moves(self):
+                        same_type.append((row, col))
+        
+        disambiguation = ""
+        if same_type:
+            disambiguation = cols[from_pos[1]]
+        
+        capture = "x" if captured_piece else ""
+        return piece_letter + disambiguation + capture + destination
+            
