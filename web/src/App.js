@@ -13,7 +13,8 @@ function App() {
   const [history, setHistory] = useState([]);
   const [viewingIndex, setViewingIndex] = useState(null);
   const [viewingBoard, setViewingBoard] = useState(null);
-  
+  const [promotionPending, setPromotionPending] = useState(null);
+
 
   useEffect(() => {
     fetch('http://localhost:8000/board')
@@ -106,8 +107,39 @@ function App() {
     }
   }
 
+  function sendMove(from, to, promotion = null) {
+    fetch('http://localhost:8000/move', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({from_pos: from, to_pos: to, promotion})
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        setWhiteInCheck(data.white_in_check);
+        setBlackInCheck(data.black_in_check);
+        setViewingBoard(null);
+        setViewingIndex(null);
+        fetch('http://localhost:8000/board')
+          .then(response => response.json())
+          .then(data => setBoard(data));
+        fetch('http://localhost:8000/history')
+          .then(response => response.json())
+          .then(data => setHistory(data));
+      }
+      setSelectedPiece(null);
+    });
+  }
+
+  function handlePromotion(pieceType) {
+    const { from, to } = promotionPending;
+    setPromotionPending(null);
+    sendMove(from, to, pieceType);
+  }
+
   function handleClick(row, col) {
     if (viewingIndex !== null) return;
+    if (promotionPending) return;
     if (selectedPiece === null) {
       const piece = getPieceAt(row, col);
       if (piece) setSelectedPiece([row, col]);
@@ -118,28 +150,15 @@ function App() {
         setSelectedPiece([row, col]);
         return;
       }
-      // mandar movimiento a la API
-      fetch('http://localhost:8000/move', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({from_pos: selectedPiece, to_pos: [row, col]})
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setWhiteInCheck(data.white_in_check);
-          setBlackInCheck(data.black_in_check);
-          setViewingBoard(null);
-          setViewingIndex(null);
-          fetch('http://localhost:8000/board')
-            .then(response => response.json())
-            .then(data => setBoard(data));
-          fetch('http://localhost:8000/history')
-            .then(response => response.json())
-            .then(data => setHistory(data));
-        }
+      const isPromotion = selectedPieceObj?.type === 'pawn' &&
+        ((selectedPieceObj.color === 'white' && row === 7) ||
+         (selectedPieceObj.color === 'black' && row === 0));
+      if (isPromotion) {
+        setPromotionPending({ from: selectedPiece, to: [row, col], color: selectedPieceObj.color });
         setSelectedPiece(null);
-      });
+        return;
+      }
+      sendMove(selectedPiece, [row, col]);
     }
   }
   return (
@@ -148,23 +167,62 @@ function App() {
       <h1>Chess Engine</h1>
       <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
       <button onClick={resetGame}>Nueva partida</button>
-      <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 60px)'}}>
-        {rows.flatMap(row =>
-          cols.map(col => {
-            const piece = getPieceAt(row, col);
-            const isLight = (row + col) % 2 === 0;
-            const isKingInCheck = piece && piece.type === 'king' && 
-            ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
-            return (
-              <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
-                width: 60,
-                height: 60,
-                backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
-              }}>
-                {piece && <img src={getPieceImage(piece)} alt={piece.type} width={60} height={60} />}
+      <div style={{position: 'relative', display: 'inline-block'}}>
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 60px)'}}>
+          {rows.flatMap(row =>
+            cols.map(col => {
+              const piece = getPieceAt(row, col);
+              const isLight = (row + col) % 2 === 0;
+              const isKingInCheck = piece && piece.type === 'king' &&
+                ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
+              return (
+                <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
+                  width: 60,
+                  height: 60,
+                  backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
+                }}>
+                  {piece && <img src={getPieceImage(piece)} alt={piece.type} width={60} height={60} />}
+                </div>
+              );
+            })
+          )}
+        </div>
+        {promotionPending && (
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+            }}>
+              <span style={{fontWeight: 'bold', fontSize: '16px'}}>Elegir pieza</span>
+              <div style={{display: 'flex', gap: '8px'}}>
+                {['queen', 'rook', 'bishop', 'knight'].map(pieceType => (
+                  <div key={pieceType} onClick={() => handlePromotion(pieceType)} style={{
+                    cursor: 'pointer',
+                    width: 60, height: 60,
+                    border: '2px solid #ccc',
+                    borderRadius: '6px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#769656'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#ccc'}
+                  >
+                    <img src={getPieceImage({color: promotionPending.color, type: pieceType})} width={52} height={52} alt={pieceType} />
+                  </div>
+                ))}
               </div>
-            );
-          })
+            </div>
+          </div>
         )}
       </div>
     </div>

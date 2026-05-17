@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 class MoveRequest(BaseModel):
     from_pos: tuple[int, int]
     to_pos: tuple[int, int]
+    promotion: str | None = None
 
 
 class EndGameRequest(BaseModel):
@@ -45,8 +46,7 @@ def get_board():
 
 @app.post("/move")
 def make_move(move: MoveRequest):
-    piece = game.board.get_piece_at(move.from_pos)
-    result = game.make_move(move.from_pos, move.to_pos)
+    result = game.make_move(move.from_pos, move.to_pos, move.promotion)
     if result:
         return {"success": True,
                 "turn": game.current_turn.value,

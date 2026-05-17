@@ -59,7 +59,7 @@ class Pawn(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.PAWN, position, PieceNotation.PAWN)
         
-    def valid_moves(self, board, en_passant_target=None):
+    def valid_moves(self, board, en_passant_target=None, **kwargs):
         moves = []
         row, col = self.position
         if self.color == Color.WHITE:
@@ -94,7 +94,7 @@ class Rook(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.ROOK, position, PieceNotation.ROOK)
         
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board:'Board', **kwargs):
         moves = []
         row, col = self.position
         
@@ -161,7 +161,7 @@ class Knight(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.KNIGHT, position, PieceNotation.KNIGHT)
 
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board:'Board', **kwargs):
         moves = []
         row, col = self.position
         
@@ -183,7 +183,7 @@ class Bishop(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.BISHOP, position, PieceNotation.BISHOP)
 
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board:'Board', **kwargs):
         moves = []
         row, col = self.position
         
@@ -249,7 +249,7 @@ class Queen(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.QUEEN, position, PieceNotation.QUEEN)
 
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board:'Board', **kwargs):
         moves = []
         row, col = self.position
         
@@ -371,7 +371,7 @@ class King(Piece):
     def __init__(self, color:Color, position:tuple[int, int]):
         super().__init__(color, PieceType.KING, position, PieceNotation.KING)
 
-    def valid_moves(self, board:'Board'):
+    def valid_moves(self, board:'Board',  check_castling=True, **kwargs):
         moves = []
         row, col = self.position
         
@@ -382,14 +382,15 @@ class King(Piece):
             (row-1, col+1), (row-1, col-1)
         ]
         
-        if board.can_castle_kingside(self.color):
-            moves.append((row, 6))
-        if board.can_castle_queenside(self.color):
-            moves.append((row, 2))
-        
         for pos in possible:
             self.add_if_empty(moves, board, pos)
             self.add_if_enemy(moves, board, pos)
+            
+        if check_castling:  # solo chequea enroque si se lo pedimos
+            if board.can_castle_kingside(self.color):
+                moves.append((row, 6))
+            if board.can_castle_queenside(self.color):
+                moves.append((row, 2))
         
         
         

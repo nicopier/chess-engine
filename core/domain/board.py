@@ -48,20 +48,11 @@ class Board():
     
     def is_in_check(self, color: Color):
         king_position = self.find_king(color)
-        opponent_color = Color.BLACK if color == Color.WHITE else Color.WHITE
-        
-        for row in range(8):
-            for col in range(8):
-                piece_position = (row, col)
-                piece = self.get_piece_at(piece_position)
-                if piece and piece.color == opponent_color:
-                    if king_position in piece.valid_moves(self):
-                        return True
-        return False
+        return self.is_square_attacked(king_position, color)
     
-    def to_fen(self, current_turn: Color):
+    def to_fen(self, current_turn: Color, en_passant_target=None, halfmove_clock=0, fullmove_number=1):
         final_fen = ""
-        for row in reversed(self.board): #se recorren al revez las piezas en el tablero para que la fila 8 sea la primera en el fen
+        for row in reversed(self.board):
             row_fen = ""
             none_escaques = 0
             for piece in row:
@@ -75,8 +66,31 @@ class Board():
             if none_escaques > 0:
                 row_fen += str(none_escaques)
             final_fen += row_fen + "/"
+        
         turn = "w" if current_turn == Color.WHITE else "b"
-        return final_fen.rstrip("/") + f" {turn}"
+        
+        castling = ""
+        white_king = self.get_piece_at((0, 4))
+        white_rook_h = self.get_piece_at((0, 7))
+        white_rook_a = self.get_piece_at((0, 0))
+        black_king = self.get_piece_at((7, 4))
+        black_rook_h = self.get_piece_at((7, 7))
+        black_rook_a = self.get_piece_at((7, 0))
+        if white_king and not white_king.has_moved:
+            if white_rook_h and not white_rook_h.has_moved: castling += "K"
+            if white_rook_a and not white_rook_a.has_moved: castling += "Q"
+        if black_king and not black_king.has_moved:
+            if black_rook_h and not black_rook_h.has_moved: castling += "k"
+            if black_rook_a and not black_rook_a.has_moved: castling += "q"
+        if not castling:
+            castling = "-"
+        
+        cols = ['a','b','c','d','e','f','g','h']
+        ep = "-"
+        if en_passant_target:
+            ep = cols[en_passant_target[1]] + str(en_passant_target[0] + 1)
+        
+        return f"{final_fen.rstrip('/')} {turn} {castling} {ep} {halfmove_clock} {fullmove_number}"
     
     def to_san(self, piece, from_pos, to_pos, captured_piece):
         cols = ['a','b','c','d','e','f','g','h']
@@ -115,13 +129,56 @@ class Board():
         return piece_letter + disambiguation + capture + destination
     
     def is_square_attacked(self, position: tuple[int, int], color: Color) -> bool:
-        opponent_color = Color.BLACK if color == Color.WHITE else Color.WHITE
-        for row in range(8):
-            for col in range(8):
-                piece = self.get_piece_at((row, col))
-                if piece and piece.color == opponent_color:
-                    if position in piece.valid_moves(self):
+        opponent = Color.BLACK if color == Color.WHITE else Color.WHITE
+        row, col = position
+
+        for dr, dc in [(2,1),(2,-1),(-2,1),(-2,-1),(1,2),(1,-2),(-1,2),(-1,-2)]:
+            r, c = row+dr, col+dc
+            if 0 <= r <= 7 and 0 <= c <= 7:
+                p = self.board[r][c]
+                if p and p.color == opponent and p.piece_type == PieceType.KNIGHT:
+                    return True
+
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            for i in range(1, 8):
+                r, c = row+dr*i, col+dc*i
+                if not (0 <= r <= 7 and 0 <= c <= 7):
+                    break
+                p = self.board[r][c]
+                if p:
+                    if p.color == opponent and p.piece_type in (PieceType.ROOK, PieceType.QUEEN):
                         return True
+                    break
+
+        for dr, dc in [(1,1),(1,-1),(-1,1),(-1,-1)]:
+            for i in range(1, 8):
+                r, c = row+dr*i, col+dc*i
+                if not (0 <= r <= 7 and 0 <= c <= 7):
+                    break
+                p = self.board[r][c]
+                if p:
+                    if p.color == opponent and p.piece_type in (PieceType.BISHOP, PieceType.QUEEN):
+                        return True
+                    break
+
+        pawn_dir = 1 if color == Color.WHITE else -1
+        for dc in [-1, 1]:
+            r, c = row+pawn_dir, col+dc
+            if 0 <= r <= 7 and 0 <= c <= 7:
+                p = self.board[r][c]
+                if p and p.color == opponent and p.piece_type == PieceType.PAWN:
+                    return True
+
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                r, c = row+dr, col+dc
+                if 0 <= r <= 7 and 0 <= c <= 7:
+                    p = self.board[r][c]
+                    if p and p.color == opponent and p.piece_type == PieceType.KING:
+                        return True
+
         return False
             
     def can_castle_kingside(self, color: Color) -> bool:
@@ -140,6 +197,8 @@ class Board():
         row = 0 if color == Color.WHITE else 7
         king = self.get_piece_at((row, 4))
         rook = self.get_piece_at((row, 0))
+        
+        
         return (king and not king.has_moved and
                 rook and not rook.has_moved and
                 self.get_piece_at((row, 1)) is None and
