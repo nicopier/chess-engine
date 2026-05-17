@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from domain.game import Game
 from pydantic import BaseModel
+from typing import Literal
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,7 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 class MoveRequest(BaseModel):
     from_pos: tuple[int, int]
     to_pos: tuple[int, int]
-    
+
+
+class EndGameRequest(BaseModel):
+    result: Literal["white_wins", "black_wins", "draw"]
+
 app = FastAPI()
 
 app.add_middleware(
@@ -55,3 +60,14 @@ def make_move(move: MoveRequest):
 @app.get("/history")
 def get_history():
     return game.move_history
+
+@app.post("/end_game")
+def end_game(request: EndGameRequest):
+    game.end_game(request.result)
+    return {"success": True, "result": game.result}
+
+@app.post("/reset")
+def reset_game():
+    global game
+    game = Game()
+    return {"success": True}

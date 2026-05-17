@@ -8,9 +8,15 @@ class Game():
         self.white_in_check = False
         self.black_in_check = False
         
+        self.result = None
+        self.game_over = False
+        
         self.move_history = move_history if move_history is not None else []
         
     def make_move(self, from_pos:tuple[int, int], to_pos:tuple[int, int]):
+        if self.game_over:
+            return False
+        
         piece = self.board.get_piece_at(from_pos)
         if piece is None:
             return False
@@ -52,4 +58,6 @@ class Game():
                                 })
         return True
     
-    
+    def end_game(self, result: str):
+        self.game_over = True
+        self.result = result  # "white_wins", "black_wins", "draw"

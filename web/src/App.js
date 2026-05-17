@@ -8,6 +8,8 @@ function App() {
   const [flipped, setFlipped] = useState(false);
   const rows = flipped ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
   const cols = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+  const [history, setHistory] = useState([]);
+
   useEffect(() => {
     fetch('http://localhost:8000/board')
     .then(response => response.json())
@@ -32,6 +34,20 @@ function App() {
     return board.find(p => p.position[0] === row && p.position[1] === col);
   }
 
+  function resetGame() {
+  fetch('http://localhost:8000/reset', { method: 'POST' })
+    .then(response => response.json())
+    .then(() => {
+      fetch('http://localhost:8000/board')
+        .then(response => response.json())
+        .then(data => setBoard(data));
+      setHistory([]);
+      setWhiteInCheck(false);
+      setBlackInCheck(false);
+      setSelectedPiece(null);
+    });
+}
+
   function handleClick(row, col) {
   if (selectedPiece === null) {
     const piece = getPieceAt(row, col);
@@ -51,33 +67,52 @@ function App() {
         fetch('http://localhost:8000/board')
           .then(response => response.json())
           .then(data => setBoard(data));
+        fetch('http://localhost:8000/history')
+          .then(response => response.json())
+          .then(data => setHistory(data));
       }
       setSelectedPiece(null);
     });
   }
 }
   return (
-    <div>
-      <h1>Chess Engine</h1>
-      <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
-      <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 60px)'}}>
-        {rows.flatMap(row =>
-          cols.map(col => {
-            const piece = getPieceAt(row, col);
-            const isLight = (row + col) % 2 === 0;
-            const isKingInCheck = piece && piece.type === 'king' && 
-            ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
-            return (
-              <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
-                width: 60,
-                height: 60,
-                backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
-              }}>
-                {piece && <img src={getPieceImage(piece)} alt={piece.type} width={60} height={60} />}
-              </div>
-            );
-          })
-        )}
+    <div style={{display: 'flex', gap: '20px'}}>
+      <div>
+        <h1>Chess Engine</h1>
+        <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
+        <button onClick={resetGame}>Nueva partida</button>
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(8, 60px)'}}>
+          {rows.flatMap(row =>
+            cols.map(col => {
+              const piece = getPieceAt(row, col);
+              const isLight = (row + col) % 2 === 0;
+              const isKingInCheck = piece && piece.type === 'king' && 
+              ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
+              return (
+                <div key={`${row}-${col}`} onClick={() => handleClick(row, col)} style={{
+                  width: 60,
+                  height: 60,
+                  backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
+                }}>
+                  {piece && <img src={getPieceImage(piece)} alt={piece.type} width={60} height={60} />}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+      <div style={{width: '200px', overflowY: 'auto', maxHeight: '480px'}}>
+        <h3>Movimientos</h3>
+        {history.reduce((pairs, move, index) => {
+          if (index % 2 === 0) pairs.push([move]);
+          else pairs[pairs.length - 1].push(move);
+          return pairs;
+        }, []).map((pair, index) => (
+          <div key={index} style={{padding: '4px'}}>
+            {index + 1}. {pair[0].piece} → {pair[0].to_pos[0]},{pair[0].to_pos[1]}
+            {pair[1] && ` | ${pair[1].piece} → ${pair[1].to_pos[0]},${pair[1].to_pos[1]}`}
+          </div>
+        ))}
       </div>
     </div>
   );
