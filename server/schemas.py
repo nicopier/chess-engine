@@ -2,23 +2,27 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 class RoomCreate(BaseModel):
-    id: str = Field(max_length=255, description="Unique identifier for the room")
-    time_control: int = Field(default=600, gt=0, le=3600, description="Time per player in seconds")
-    
+    creator: str = Field(max_length=255)
+    comment: Optional[str] = Field(None, max_length=255)
+    time_control: int = Field(default=600, gt=0, le=3600)
 
 class RoomResponse(BaseModel):
-    id: str = Field(max_length=255, description="Unique identifier for the room")
-    fen: str = Field(max_length=255, description="FEN string representing the current state of the chess game")
-    player_white: Optional[str] = Field(None, max_length=255, description="Identifier for the white player")
-    player_black: Optional[str] = Field(None, max_length=255, description="Identifier for the black player")
-    status: Literal["waiting","playing","finished"] = Field(description="Current status of the room")
+    id: str
+    creator: str
+    comment: Optional[str] = None
+    time_control: int
+    player_white: Optional[str] = None
+    player_black: Optional[str] = None
+    status: Literal["waiting", "playing", "finished"]
     time_white: Optional[float] = None
     time_black: Optional[float] = None
 
     class Config:
         from_attributes = True
-    
+
 class JoinRoomRequest(BaseModel):
-    player_id: str =Field(max_length=255, description="Unique identifier for the player")
-    color: Literal["white", "black"] = Field(description="Color the player wants to join as")
-    
+    player_id: str = Field(max_length=255)
+    color: Literal["white", "black"]
+
+class JoinRoomResponse(RoomResponse):
+    token: str

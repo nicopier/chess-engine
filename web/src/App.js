@@ -12,7 +12,8 @@ function App() {
   const [blackInCheck, setBlackInCheck] = useState(false);
   const [timeWhite, setTimeWhite] = useState(null);
   const [timeBlack, setTimeBlack] = useState(null);
-  const [gameOver, setGameOver] = useState(null); // null | { result: string }
+  const [gameOver, setGameOver] = useState(null); // null | { result, reason }
+  const [drawOffer, setDrawOffer] = useState(null); // null | 'white' | 'black'
   const [flipped, setFlipped] = useState(false);
   useEffect(() => { if (session) setFlipped(session.color === 'black'); }, [session]);
   const rows = flipped ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
@@ -27,6 +28,7 @@ function App() {
   // dragPos state: solo para redibujar la pieza flotante
   const dragState = useRef(null);   // { piece, from: [row, col] }
   const [dragPos, setDragPos] = useState(null);  // { x, y } | null
+  const moveSound = useRef(new Audio('/sounds/move-self.mp3'));
 
   // Registra/limpia los listeners de mouse solo cuando empieza o termina un drag
   useEffect(() => {
@@ -79,17 +81,24 @@ function App() {
     fetch(`http://localhost:8000/rooms/${session.roomId}`)
       .then(r => r.json())
       .then(setRoomData);
-    const ws = new WebSocket(`ws://localhost:8000/rooms/${session.roomId}/ws`);
+    const wsUrl = session.token
+      ? `ws://localhost:8000/rooms/${session.roomId}/ws?token=${session.token}`
+      : `ws://localhost:8000/rooms/${session.roomId}/ws`;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
+      if (data.moved) { moveSound.current.currentTime = 0; moveSound.current.play().catch(() => {}); }
+      if (data.player_white || data.player_black) setRoomData(prev => ({ ...prev, player_white: data.player_white, player_black: data.player_black }));
       setBoard(data.board);
       setWhiteInCheck(data.white_in_check);
       setBlackInCheck(data.black_in_check);
       setHistory(data.history);
       if (data.time_white != null) setTimeWhite(data.time_white);
       if (data.time_black != null) setTimeBlack(data.time_black);
-      if (data.game_over) setGameOver({ result: data.result, reason: data.reason });
+      if (data.game_over) { setGameOver({ result: data.result, reason: data.reason }); setDrawOffer(null); }
+      if (data.draw_offer) { setDrawOffer(data.draw_offer); return; }
+      if (data.draw_rejected) { setDrawOffer(null); return; }
       setViewingBoard(null);
       setViewingIndex(null);
       setSelectedPiece(null);
@@ -168,9 +177,16 @@ function App() {
     }
   }
 
+  const isSpectator = !session?.token;
+
   function sendMove(from, to, promotion = null) {
-    if (!wsRef.current) return;
+    if (!wsRef.current || isSpectator) return;
     wsRef.current.send(JSON.stringify({ from_pos: from, to_pos: to, promotion }));
+  }
+
+  function sendAction(action) {
+    if (!wsRef.current || isSpectator) return;
+    wsRef.current.send(JSON.stringify({ action }));
   }
 
   function handlePromotion(pieceType) {
@@ -183,6 +199,7 @@ function App() {
     if (dragState.current) return;  // ignorar clicks que son sueltas de drag
     if (viewingIndex !== null) return;
     if (promotionPending) return;
+    if (isSpectator) return;
     if (selectedPiece === null) {
       const piece = getPieceAt(row, col);
       if (piece) setSelectedPiece([row, col]);
@@ -231,7 +248,17 @@ function App() {
       <div>
         <h1>Chess Engine</h1>
         <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
-        <button onClick={resetGame}>Nueva partida</button>
+        {!isSpectator && !gameOver && (
+          <>
+            <button onClick={() => sendAction('offer_draw')} disabled={!!drawOffer}>
+              Ofrecer tablas
+            </button>
+            <button onClick={() => { if (window.confirm('¿Seguro que querés rendirte?')) sendAction('resign'); }}>
+              Rendirse
+            </button>
+          </>
+        )}
+        {isSpectator && <span style={{ fontSize: 13, color: '#888' }}>👁 Modo espectador</span>}
         {roomData && (
           <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
             <span>{flipped ? (roomData.player_white || 'Esperando blancas...') : (roomData.player_black || 'Esperando negras...')}</span>
@@ -267,7 +294,7 @@ function App() {
                         height={60}
                         draggable={false}
                         onMouseDown={(e) => {
-                          if (viewingIndex !== null || promotionPending) return;
+                          if (viewingIndex !== null || promotionPending || isSpectator) return;
                           e.preventDefault();
                           dragState.current = { piece, from: [row, col] };
                           setDragPos({ x: e.clientX, y: e.clientY });
@@ -285,6 +312,32 @@ function App() {
               })
             )}
           </div>
+          {drawOffer && drawOffer !== session?.color && (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 20,
+            }}>
+              <div style={{
+                backgroundColor: 'white', borderRadius: '10px', padding: '28px 36px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+                boxShadow: '0 6px 30px rgba(0,0,0,0.4)',
+              }}>
+                <span style={{ fontWeight: 'bold', fontSize: '16px' }}>Te ofrecen tablas</span>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => { sendAction('accept_draw'); setDrawOffer(null); }}
+                    style={{ padding: '8px 20px', background: '#769656', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold' }}>
+                    Aceptar
+                  </button>
+                  <button onClick={() => { sendAction('reject_draw'); setDrawOffer(null); }}
+                    style={{ padding: '8px 20px', border: '1px solid #ccc', borderRadius: 6, cursor: 'pointer' }}>
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {gameOver && (
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -305,11 +358,12 @@ function App() {
               }}>
                 <span style={{ fontSize: '22px', fontWeight: 'bold' }}>
                   {gameOver.result === 'white_wins' ? 'Ganan las blancas' :
-                   gameOver.result === 'black_wins' ? 'Ganan las negras' : 'Tablas'}
+                   gameOver.result === 'black_wins' ? 'Ganan las negras' : '½ - ½ Tablas'}
                 </span>
                 <span style={{ fontSize: '14px', color: '#666' }}>
                   {gameOver.reason === 'timeout' ? 'Tiempo agotado' :
-                   gameOver.reason === 'checkmate' ? 'Jaque mate' : 'Sin movimientos legales'}
+                   gameOver.reason === 'checkmate' ? 'Jaque mate' :
+                   gameOver.reason === 'resign' ? 'Abandono' : 'Tablas por acuerdo'}
                 </span>
               </div>
             </div>
