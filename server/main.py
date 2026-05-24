@@ -5,8 +5,13 @@ from typing import Literal
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from .routers import websocket
 
+from .database import Base, engine
+from .models import Room
+from .routers import rooms
 
+Base.metadata.create_all(bind=engine)
 
 class MoveRequest(BaseModel):
     from_pos: tuple[int, int]
@@ -18,6 +23,9 @@ class EndGameRequest(BaseModel):
     result: Literal["white_wins", "black_wins", "draw"]
 
 app = FastAPI()
+
+app.include_router(rooms.router)
+app.include_router(websocket.router)
 
 app.add_middleware(
     CORSMiddleware,

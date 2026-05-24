@@ -5,7 +5,6 @@ class Board():
         self.board = [[None for _ in range(8)] for _ in range(8)]
         # Posición de cada rey tracked directamente — find_king pasa de O(64) a O(1)
         self._king_pos = {}
-        self.setup_pieces()
 
     def setup_pieces(self):
         for col in range(8):
@@ -88,6 +87,51 @@ class Board():
         
         return f"{final_fen.rstrip('/')} {turn} {castling} {ep} {halfmove_clock} {fullmove_number}"
     
+    def from_fen(self, fen: str):
+        parts = fen.split(' ')
+        piece_map = {
+            'p': (Pawn, Color.BLACK), 'r': (Rook, Color.BLACK), 'n': (Knight, Color.BLACK),
+            'b': (Bishop, Color.BLACK), 'q': (Queen, Color.BLACK), 'k': (King, Color.BLACK),
+            'P': (Pawn, Color.WHITE), 'R': (Rook, Color.WHITE), 'N': (Knight, Color.WHITE),
+            'B': (Bishop, Color.WHITE), 'Q': (Queen, Color.WHITE), 'K': (King, Color.WHITE),
+        }
+        self.board = [[None for _ in range(8)] for _ in range(8)]
+        self._king_pos = {}
+
+        rows = parts[0].split('/')
+        for row_idx, row_str in enumerate(rows):
+            actual_row = 7 - row_idx
+            col = 0
+            for char in row_str:
+                if char.isdigit():
+                    col += int(char)
+                else:
+                    cls, color = piece_map[char]
+                    piece = cls(color, (actual_row, col))
+                    piece.has_moved = True
+                    self.board[actual_row][col] = piece
+                    if cls == King:
+                        self._king_pos[color] = (actual_row, col)
+                    col += 1
+
+        castling = parts[2] if len(parts) > 2 else '-'
+        if 'K' in castling:
+            p = self.get_piece_at((0, 7))
+            if p: p.has_moved = False
+        if 'Q' in castling:
+            p = self.get_piece_at((0, 0))
+            if p: p.has_moved = False
+        if 'k' in castling:
+            p = self.get_piece_at((7, 7))
+            if p: p.has_moved = False
+        if 'q' in castling:
+            p = self.get_piece_at((7, 0))
+            if p: p.has_moved = False
+        white_king = self.get_piece_at((0, 4))
+        black_king = self.get_piece_at((7, 4))
+        if white_king and ('K' in castling or 'Q' in castling): white_king.has_moved = False
+        if black_king and ('k' in castling or 'q' in castling): black_king.has_moved = False
+
     def to_san(self, piece, from_pos, to_pos, captured_piece):
         cols = ['a','b','c','d','e','f','g','h']
         col_letter = cols[to_pos[1]]

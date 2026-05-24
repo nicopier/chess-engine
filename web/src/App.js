@@ -1,12 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
+import Lobby from './Lobby';
 
 function App() {
+  const [session, setSession] = useState(null); // { roomId, playerId, color }
+  const [roomData, setRoomData] = useState(null);
   const historyEndRef = useRef(null);
+  const wsRef = useRef(null);
   const [board, setBoard] = useState([]);
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [whiteInCheck, setWhiteInCheck] = useState(false);
   const [blackInCheck, setBlackInCheck] = useState(false);
+  const [timeWhite, setTimeWhite] = useState(null);
+  const [timeBlack, setTimeBlack] = useState(null);
+  const [gameOver, setGameOver] = useState(null); // null | { result: string }
   const [flipped, setFlipped] = useState(false);
+  useEffect(() => { if (session) setFlipped(session.color === 'black'); }, [session]);
   const rows = flipped ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
   const cols = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
   const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w';
@@ -67,16 +75,40 @@ function App() {
   }, [!!dragPos]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/board')
-    .then(response => response.json())
-    .then(data => setBoard(data));
-  }, []);
+    if (!session) return;
+    fetch(`http://localhost:8000/rooms/${session.roomId}`)
+      .then(r => r.json())
+      .then(setRoomData);
+    const ws = new WebSocket(`ws://localhost:8000/rooms/${session.roomId}/ws`);
+    wsRef.current = ws;
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      setBoard(data.board);
+      setWhiteInCheck(data.white_in_check);
+      setBlackInCheck(data.black_in_check);
+      setHistory(data.history);
+      if (data.time_white != null) setTimeWhite(data.time_white);
+      if (data.time_black != null) setTimeBlack(data.time_black);
+      if (data.game_over) setGameOver({ result: data.result, reason: data.reason });
+      setViewingBoard(null);
+      setViewingIndex(null);
+      setSelectedPiece(null);
+    };
+    return () => ws.close();
+  }, [session]);
 
   useEffect(() => {
     if (historyEndRef.current) {
       historyEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [history]);
+
+  function formatTime(secs) {
+    if (secs == null) return '--:--';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
 
   function getPieceImage(piece) {
     const colorLetter = piece.color === 'white' ? 'w' : 'b';
@@ -119,62 +151,26 @@ function App() {
   }
 
   function resetGame() {
-    fetch('http://localhost:8000/reset', { method: 'POST' })
-      .then(response => response.json())
-      .then(() => {
-        fetch('http://localhost:8000/board')
-          .then(response => response.json())
-          .then(data => setBoard(data));
-        setHistory([]);
-        setWhiteInCheck(false);
-        setBlackInCheck(false);
-        setSelectedPiece(null);
-        setViewingBoard(null);
-        setViewingIndex(null);
-      });
+    // TODO: implementar reset por sala cuando tengamos el endpoint
   }
 
   function goToPosition(index) {
-    if (index === history.length - 1) {
+    if (index === null || index === history.length - 1) {
       setViewingIndex(null);
       setViewingBoard(null);
-      fetch('http://localhost:8000/goto/last', { method: 'POST' });
       return;
     }
     setViewingIndex(index);
-    if (index === null) {
-      setViewingBoard(null);
-      fetch('http://localhost:8000/goto/last', { method: 'POST' });
-    } else if (index === -1) {
+    if (index === -1) {
       setViewingBoard(parseFen(INITIAL_FEN));
-      fetch('http://localhost:8000/goto/0', { method: 'POST' });
     } else {
       setViewingBoard(parseFen(history[index].fen));
     }
   }
 
   function sendMove(from, to, promotion = null) {
-    fetch('http://localhost:8000/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_pos: from, to_pos: to, promotion })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        setWhiteInCheck(data.white_in_check);
-        setBlackInCheck(data.black_in_check);
-        setViewingBoard(null);
-        setViewingIndex(null);
-        fetch('http://localhost:8000/board')
-          .then(response => response.json())
-          .then(data => setBoard(data));
-        fetch('http://localhost:8000/history')
-          .then(response => response.json())
-          .then(data => setHistory(data));
-      }
-      setSelectedPiece(null);
-    });
+    if (!wsRef.current) return;
+    wsRef.current.send(JSON.stringify({ from_pos: from, to_pos: to, promotion }));
   }
 
   function handlePromotion(pieceType) {
@@ -211,6 +207,8 @@ function App() {
 
   const isDraggingFrom = dragState.current?.from;
 
+  if (!session) return <Lobby onJoin={setSession} />;
+
   return (
     <div style={{ display: 'flex', gap: '20px', userSelect: 'none' }}>
       {/* Pieza flotante que sigue el cursor durante el drag */}
@@ -234,6 +232,12 @@ function App() {
         <h1>Chess Engine</h1>
         <button onClick={() => setFlipped(!flipped)}>Rotar tablero</button>
         <button onClick={resetGame}>Nueva partida</button>
+        {roomData && (
+          <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+            <span>{flipped ? (roomData.player_white || 'Esperando blancas...') : (roomData.player_black || 'Esperando negras...')}</span>
+            <span>{flipped ? formatTime(timeWhite) : formatTime(timeBlack)}</span>
+          </div>
+        )}
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 60px)' }}>
             {rows.flatMap(row =>
@@ -281,6 +285,35 @@ function App() {
               })
             )}
           </div>
+          {gameOver && (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 20,
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '10px',
+                padding: '32px 40px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px',
+                boxShadow: '0 6px 30px rgba(0,0,0,0.5)',
+                textAlign: 'center',
+              }}>
+                <span style={{ fontSize: '22px', fontWeight: 'bold' }}>
+                  {gameOver.result === 'white_wins' ? 'Ganan las blancas' :
+                   gameOver.result === 'black_wins' ? 'Ganan las negras' : 'Tablas'}
+                </span>
+                <span style={{ fontSize: '14px', color: '#666' }}>
+                  {gameOver.reason === 'timeout' ? 'Tiempo agotado' :
+                   gameOver.reason === 'checkmate' ? 'Jaque mate' : 'Sin movimientos legales'}
+                </span>
+              </div>
+            </div>
+          )}
           {promotionPending && (
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -319,6 +352,12 @@ function App() {
             </div>
           )}
         </div>
+        {roomData && (
+          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+            <span>{flipped ? (roomData.player_black || 'Esperando negras...') : (roomData.player_white || 'Esperando blancas...')}</span>
+            <span>{flipped ? formatTime(timeBlack) : formatTime(timeWhite)}</span>
+          </div>
+        )}
       </div>
       <div style={{ width: '200px' }}>
         <h3>Movimientos</h3>

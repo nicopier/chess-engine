@@ -2,22 +2,29 @@ from .board import Board
 from .pieces import Pawn, Color, Rook, Knight, Bishop, Queen, King, PieceType, PieceNotation
 
 class Game():
-    def __init__(self, move_history: list = None):
+    INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+
+    def __init__(self, fen: str = None, move_history: list = None):
         self.board = Board()
-        self.current_turn = Color.WHITE
-        
-        self.white_in_check = False
-        self.black_in_check = False
-        
         self.result = None
         self.game_over = False
-        
+        self.game_over_reason = None
         self.move_history = move_history if move_history is not None else []
         self.current_position = 0
-        
-        self.en_passant_target = None
-        self.halfmove_clock = 0
-        self.fullmove_number = 1
+
+        fen = fen or self.INITIAL_FEN
+        parts = fen.split(' ')
+        self.board.from_fen(fen)  # siempre desde FEN — inicial o custom
+        self.current_turn = Color.WHITE if parts[1] == 'w' else Color.BLACK
+
+        cols = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7}
+        ep = parts[3] if len(parts) > 3 else '-'
+        self.en_passant_target = (int(ep[1]) - 1, cols[ep[0]]) if ep != '-' else None
+        self.halfmove_clock = int(parts[4]) if len(parts) > 4 else 0
+        self.fullmove_number = int(parts[5]) if len(parts) > 5 else 1
+
+        self.white_in_check = self.board.is_in_check(Color.WHITE)
+        self.black_in_check = self.board.is_in_check(Color.BLACK)
                 
     def make_move(self, from_pos:tuple[int, int], to_pos:tuple[int, int], promotion:str = None):
         if self.current_position != len(self.move_history):
@@ -132,10 +139,18 @@ class Game():
             self.white_in_check = False
             self.current_turn = Color.BLACK
             self.black_in_check = self.board.is_in_check(Color.BLACK)
+            if self.black_in_check and not self._has_legal_moves():
+                self.game_over = True
+                self.result = "white_wins"
+                self.game_over_reason = "checkmate"
         else:
             self.black_in_check = False
             self.current_turn = Color.WHITE
             self.white_in_check = self.board.is_in_check(Color.WHITE)
+            if self.white_in_check and not self._has_legal_moves():
+                self.game_over = True
+                self.result = "black_wins"
+                self.game_over_reason = "checkmate"
 
         self.move_history.append({
             "from_pos": from_pos,
@@ -149,6 +164,29 @@ class Game():
         self.current_position += 1 
         return True
     
+    def _has_legal_moves(self) -> bool:
+        for row in self.board.board:
+            for piece in row:
+                if piece is None or piece.color != self.current_turn:
+                    continue
+                for move in piece.valid_moves(self.board, en_passant_target=self.en_passant_target):
+                    captured = self.board.get_piece_at(move)
+                    old_pos = piece.position
+                    self.board.board[move[0]][move[1]] = piece
+                    self.board.board[old_pos[0]][old_pos[1]] = None
+                    piece.move(move)
+                    if piece.piece_type == PieceType.KING:
+                        self.board.update_king_pos(piece.color, move)
+                    legal = not self.board.is_in_check(self.current_turn)
+                    self.board.board[old_pos[0]][old_pos[1]] = piece
+                    self.board.board[move[0]][move[1]] = captured
+                    piece.move(old_pos)
+                    if piece.piece_type == PieceType.KING:
+                        self.board.update_king_pos(piece.color, old_pos)
+                    if legal:
+                        return True
+        return False
+
     def end_game(self, result: str):
         self.game_over = True
         self.result = result
