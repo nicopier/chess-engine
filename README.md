@@ -1,52 +1,55 @@
 # Chess Engine
 
-Motor de ajedrez multiplayer con backend Python y frontend React. Dos jugadores se conectan a una sala desde el navegador y juegan en tiempo real via WebSockets, con reloj por jugador gestionado en el servidor.
+Real-time multiplayer chess with a Python backend and React frontend. Two players connect to a room from the browser and play via WebSockets, with server-side clocks and anti-cheat enforcement.
 
 ## Stack
 
 - **Backend:** Python, FastAPI, SQLAlchemy, SQLite, WebSockets
 - **Frontend:** React
-- **Engine:** lógica de ajedrez propia en Python puro (sin librerías externas)
+- **Engine:** custom chess logic in pure Python, no external libraries
 
 ## Features
 
-- Multiplayer en tiempo real via WebSockets
-- Lobby: crear sala con código, elegir color, unirse con nickname
-- Reloj por jugador (configurable), gestionado server-side (anti-cheat)
-- Detección de jaque, jaque mate y promoción de peones
-- Castling y en passant
-- Historial de movimientos en notación SAN con navegación interactiva
-- Drag & drop de piezas
-- Tablero rotable (perspectiva de negras)
-- Persistencia: FEN + historial guardados en DB, la partida se recupera si el servidor reinicia
+- Real-time multiplayer via WebSockets
+- Room lobby: browse open games, create a room with a comment and time control, join as white, black, or spectator
+- Per-player clock (configurable), managed server-side — clients cannot manipulate time
+- Token-based auth: secret token issued on join, validated on every WebSocket message
+- Turn enforcement: server rejects moves from the wrong player or spectators
+- Check, checkmate, and stalemate detection
+- Castling, en passant, and pawn promotion
+- Resign and draw offer (with accept/reject flow)
+- Move history in SAN notation with interactive navigation
+- Drag & drop pieces
+- Board flip (black's perspective)
+- Move sound effect
+- Full persistence: FEN + move history saved to DB, game recovers after server restart
 
-## Estructura
+## Structure
 
 ```
 chess-engine/
-  ├── engine/         ← lógica pura (board.py, game.py, pieces.py)
+  ├── engine/               ← pure chess logic (board.py, game.py, pieces.py)
   ├── server/
   │   ├── main.py
   │   ├── database.py
   │   ├── models.py
   │   ├── schemas.py
   │   └── routers/
-  │       ├── rooms.py      ← REST: crear/obtener/unirse a salas
-  │       └── websocket.py  ← WS: movimientos, timer, broadcast
+  │       ├── rooms.py      ← REST: list, create, get, join rooms
+  │       └── websocket.py  ← WS: moves, timer, broadcast, game actions
   └── web/
       └── src/
-          ├── App.js        ← tablero
-          └── Lobby.js      ← pantalla de inicio
+          ├── App.js        ← game board
+          └── Lobby.js      ← room list and join flow
 ```
 
-## Cómo levantar
+## Setup
 
 **Backend**
 ```bash
-# Activar el venv (está en core/venv)
-core\venv\Scripts\Activate.ps1       # Windows PowerShell
-# o
-source core/venv/bin/activate        # Linux/Mac
+# Activate the virtualenv (lives in core/venv)
+core\venv\Scripts\Activate.ps1    # Windows PowerShell
+source core/venv/bin/activate     # Linux / Mac
 
 pip install -r requirements.txt
 uvicorn server.main:app --reload
@@ -59,12 +62,11 @@ npm install
 npm start
 ```
 
-La DB (`test.db`) se crea sola al levantar el server.
+The SQLite database (`test.db`) is created automatically on first server start.
 
-## Uso
+## Usage
 
-1. Abrir `http://localhost:3000`
-2. Entrar como invitado, escribir un nickname
-3. Crear una sala (o unirse con el código de una existente) y elegir color
-4. Compartir el código de sala al otro jugador
-5. Cuando los dos están conectados, empieza el reloj y pueden jugar
+1. Open `http://localhost:3000`
+2. Enter a nickname
+3. Create a room or join an existing one, pick a color
+4. Share the room with your opponent — the clock starts when both players have joined
