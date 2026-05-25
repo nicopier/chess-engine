@@ -3,7 +3,9 @@ from .pieces import Pawn, Color, Rook, Knight, Bishop, Queen, King, PieceType, P
 
 class Game():
     INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-
+    
+   
+    
     def __init__(self, fen: str = None, move_history: list = None):
         self.board = Board()
         self.result = None
@@ -190,3 +192,32 @@ class Game():
     def end_game(self, result: str):
         self.game_over = True
         self.result = result
+    
+    PROMO_ENCODE = {None: 0, 'queen': 1, 'rook': 2, 'bishop': 3, 'knight': 4}
+    PROMO_DECODE = {0: None, 1: 'queen', 2: 'rook', 3: 'bishop', 4: 'knight'}
+    
+    def encode_moves(self):
+        result = bytearray()
+        for move in self.move_history:
+            fr, fc = move["from_pos"]
+            tr, tc = move["to_pos"]
+            promo = self.PROMO_ENCODE.get(move.get("promotion"), 0 )
+            from_sq = fr * 8 + fc #0-63
+            to_sq = tr * 8 + tc #0-63
+            packed = (from_sq << 10) | (to_sq << 4) | promo
+            result += packed.to_bytes(2, byteorder='big')
+        return bytes(result)
+    
+    @classmethod
+    def from_binary(cls, data: bytes):
+        game = cls()
+        for i in range(0, len(data), 2):
+            packed = int.from_bytes(data[i:i+2], 'big')
+            from_sq = (packed >> 10) & 0x3F
+            to_sq   = (packed >> 4)  & 0x3F
+            promo   = cls.PROMO_DECODE[packed & 0xF]
+            from_pos = (from_sq // 8, from_sq % 8)
+            to_pos   = (to_sq   // 8, to_sq   % 8)
+            game.make_move(from_pos, to_pos, promo)
+        return game
+    

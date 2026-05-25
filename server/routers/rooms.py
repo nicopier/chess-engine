@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Room
 from ..schemas import RoomCreate, RoomResponse, JoinRoomRequest, JoinRoomResponse
-from engine.game import Game
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
@@ -26,7 +25,7 @@ def create_room(room: RoomCreate, db: Session = Depends(get_db)):
         creator=room.creator,
         comment=room.comment,
         time_control=room.time_control,
-        fen=Game.INITIAL_FEN,
+        moves=b"",
         player_white=None,
         player_black=None,
         status="waiting",

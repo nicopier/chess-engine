@@ -3,6 +3,7 @@ from engine.game import Game
 from pydantic import BaseModel
 from typing import Literal
 
+import os
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routers import websocket
@@ -29,7 +30,7 @@ app.include_router(websocket.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")],
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Text, Integer
+from sqlalchemy import Column, String, Float, Integer, LargeBinary
 from .database import Base
 
 
@@ -9,7 +9,6 @@ class Room(Base):
     creator = Column(String, nullable=False)
     comment = Column(String, nullable=True)
     time_control = Column(Integer, nullable=False)
-    fen = Column(String)
     player_white = Column(String, nullable=True)
     player_black = Column(String, nullable=True)
     status = Column(String)
@@ -18,4 +17,4 @@ class Room(Base):
     time_white = Column(Float)
     time_black = Column(Float)
     last_move_at = Column(Float)
-    history = Column(Text, nullable=True)
+    moves = Column(LargeBinary, nullable=True)

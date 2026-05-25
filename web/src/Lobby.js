@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API = 'http://localhost:8000';
+const API = process.env.REACT_APP_API_URL;
 
 function formatTime(secs) {
   const m = Math.floor(secs / 60);

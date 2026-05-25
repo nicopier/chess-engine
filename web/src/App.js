@@ -78,12 +78,14 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
-    fetch(`http://localhost:8000/rooms/${session.roomId}`)
+    const API = process.env.REACT_APP_API_URL;
+    const WS = API.replace(/^http/, 'ws');
+    fetch(`${API}/rooms/${session.roomId}`)
       .then(r => r.json())
       .then(setRoomData);
     const wsUrl = session.token
-      ? `ws://localhost:8000/rooms/${session.roomId}/ws?token=${session.token}`
-      : `ws://localhost:8000/rooms/${session.roomId}/ws`;
+      ? `${WS}/rooms/${session.roomId}/ws?token=${session.token}`
+      : `${WS}/rooms/${session.roomId}/ws`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.onmessage = (e) => {

@@ -22,9 +22,9 @@ class ConnectionManager:
     def disconnect(self, room_id: str, websocket: WebSocket):
         self.rooms[room_id].remove(websocket)
 
-    def get_game(self, room_id: str, fen: str, move_history: list = None) -> Game:
+    def get_game(self, room_id: str, moves: bytes) -> Game:
         if room_id not in self.games:
-            self.games[room_id] = Game(fen, move_history=move_history or [])
+            self.games[room_id] = Game.from_binary(moves)
             self.locks[room_id] = asyncio.Lock()
         return self.games[room_id]
 
@@ -118,9 +118,7 @@ async def websocket_endpoint(room_id: str, websocket: WebSocket, token: str = No
     db = SessionLocal()
     try:
         room = db.query(Room).filter(Room.id == room_id).first()
-        saved_history = json.loads(room.history) if room.history else []
-        fen = saved_history[-1]["fen"] if saved_history else room.fen
-        game = manager.get_game(room_id, fen, saved_history)
+        game = manager.get_game(room_id, room.moves or b"")
 
         # determinar color del jugador una sola vez al conectarse
         if token and token == room.white_token:
@@ -177,8 +175,7 @@ async def websocket_endpoint(room_id: str, websocket: WebSocket, token: str = No
                         else:
                             room.time_black = max(0.0, room.time_black - elapsed)
                     room.last_move_at = now
-                    room.fen = game.board.to_fen(game.current_turn, game.en_passant_target, game.halfmove_clock, game.fullmove_number)
-                    room.history = json.dumps(game.move_history)
+                    room.moves = game.encode_moves()
                     if game.game_over:
                         room.status = "finished"
                     db.commit()
