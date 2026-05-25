@@ -161,9 +161,6 @@ function App() {
     return pieces;
   }
 
-  function resetGame() {
-    // TODO: implementar reset por sala cuando tengamos el endpoint
-  }
 
   function goToPosition(index) {
     if (index === null || index === history.length - 1) {
@@ -367,6 +364,11 @@ function App() {
                    gameOver.reason === 'checkmate' ? 'Jaque mate' :
                    gameOver.reason === 'resign' ? 'Abandono' : 'Tablas por acuerdo'}
                 </span>
+                <button
+                  onClick={() => setSession(null)}
+                  style={{ marginTop: 8, padding: '8px 24px', background: '#769656', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 14 }}>
+                  Nueva partida
+                </button>
               </div>
             </div>
           )}
