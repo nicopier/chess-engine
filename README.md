@@ -6,9 +6,17 @@ Two players open a browser, join a room, and play in real time. The server owns 
 
 ---
 
+## Live
+
+**Play here:** https://chess-engine-eosin.vercel.app/
+
+> **Note:** The backend runs on Render's free tier and spins down after 15 minutes of inactivity. The first request after idle may take **30–60 seconds** to wake up — this is normal. Wait for the lobby to load before creating or joining a room.
+
+---
+
 ## How it works
 
-**The engine** (`engine/`) is pure Python with zero dependencies. It implements the full ruleset: legal move generation, check detection, checkmate, castling, en passant, and pawn promotion. Board state is stored and transmitted as FEN strings.
+**The engine** (`engine/`) is pure Python with zero dependencies. It implements the full ruleset: legal move generation, check detection, checkmate, castling, en passant, and pawn promotion.
 
 **The server** (`server/`) is a FastAPI app that manages rooms, persists state to SQLite, and communicates with clients over WebSockets. Every move is validated server-side — the client has no authority over game state or time.
 
@@ -33,7 +41,7 @@ Two players open a browser, join a room, and play in real time. The server owns 
 - Drag & drop pieces (pure mouse events, no HTML5 DnD)
 - Board flip for black's perspective
 - Move sound effect
-- Full persistence — FEN and move history saved to DB after every move, game fully recovers after server restart
+- Full persistence — binary-encoded move history saved to DB after every move (~2 bytes/move), game fully recovers after server restart
 
 ---
 
@@ -45,6 +53,8 @@ Two players open a browser, join a room, and play in real time. The server owns 
 | Backend | FastAPI, SQLAlchemy, SQLite |
 | Real-time | WebSockets (native FastAPI) |
 | Frontend | React |
+| Backend hosting | Render (free tier) |
+| Frontend hosting | Vercel |
 
 ---
 
@@ -55,7 +65,7 @@ chess-engine/
   ├── engine/
   │   ├── pieces.py         ← piece classes, move generation
   │   ├── board.py          ← board state, FEN parsing/generation, SAN notation
-  │   └── game.py           ← game loop, move validation, checkmate detection
+  │   └── game.py           ← game loop, move validation, checkmate, binary encoding
   ├── server/
   │   ├── main.py           ← FastAPI app entry point
   │   ├── database.py       ← SQLAlchemy engine and session
@@ -72,7 +82,7 @@ chess-engine/
 
 ---
 
-## Setup
+## Local setup
 
 **Backend**
 
@@ -89,6 +99,7 @@ uvicorn server.main:app --reload
 
 ```bash
 cd web
+cp .env.example .env.local        # then set REACT_APP_API_URL=http://localhost:8000
 npm install
 npm start
 ```
@@ -99,10 +110,10 @@ The SQLite database (`test.db`) is created automatically on first server start. 
 
 ## How to play
 
-1. Open `http://localhost:3000`
+1. Open https://chess-engine-eosin.vercel.app/ (or `http://localhost:3000` locally)
 2. Enter a nickname
 3. Create a room — pick a comment and time control
-4. Share the room link or just tell your opponent to open the same URL and join
+4. Share the URL and tell your opponent to join the same room
 5. The clock starts the moment both players have joined
 6. Spectators can join any room at any time and watch live
 
@@ -116,4 +127,4 @@ The SQLite database (`test.db`) is created automatically on first server start. 
 
 **Token auth.** When a player joins a room, the server generates a random UUID token and returns it once. The client passes it as a WebSocket query param. The server maps the token to a color (white/black) — no token means spectator. Someone who sniffs the WebSocket URL only sees their own token, not the opponent's.
 
-**FEN + history persistence.** After every move, the server saves the full FEN and the complete move history (as JSON) to the DB. If the server crashes mid-game, the game is fully reconstructed from the DB on the next connection — board position, move list, and remaining time.
+**Binary move encoding.** After every move, the server encodes the full move history as 2 bytes per move (6 bits origin square + 6 bits destination square + 4 bits promotion) and writes it to the DB. On reconnect, the game is replayed from scratch using the binary blob. This is ~500× smaller than storing FEN+JSON per move, and the game is perfectly reconstructable from it.

@@ -25,9 +25,13 @@ export default function Lobby({ onJoin }) {
   }, [nicknameSet]);
 
   async function fetchRooms() {
-    const res = await fetch(`${API}/rooms`);
-    const data = await res.json();
-    setRooms(data);
+    try {
+      const res = await fetch(`${API}/rooms`);
+      const data = await res.json();
+      setRooms(data);
+    } catch {
+      // keep last known state on network error (e.g. backend cold start)
+    }
   }
 
   async function handleCreate() {

@@ -78,6 +78,16 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
+    setGameOver(null);
+    setDrawOffer(null);
+    setBoard([]);
+    setHistory([]);
+    setTimeWhite(null);
+    setTimeBlack(null);
+    setViewingBoard(null);
+    setViewingIndex(null);
+    setSelectedPiece(null);
+    setRoomData(null);
     const API = process.env.REACT_APP_API_URL;
     const WS = API.replace(/^http/, 'ws');
     fetch(`${API}/rooms/${session.roomId}`)
@@ -90,7 +100,15 @@ function App() {
     wsRef.current = ws;
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      if (data.moved) { moveSound.current.currentTime = 0; moveSound.current.play().catch(() => {}); }
+      if (data.draw_offer) { setDrawOffer(data.draw_offer); return; }
+      if (data.draw_rejected) { setDrawOffer(null); return; }
+      if (data.moved) {
+        moveSound.current.currentTime = 0;
+        moveSound.current.play().catch(() => {});
+        setViewingBoard(null);
+        setViewingIndex(null);
+        setSelectedPiece(null);
+      }
       if (data.player_white || data.player_black) setRoomData(prev => ({ ...prev, player_white: data.player_white, player_black: data.player_black }));
       setBoard(data.board);
       setWhiteInCheck(data.white_in_check);
@@ -99,11 +117,6 @@ function App() {
       if (data.time_white != null) setTimeWhite(data.time_white);
       if (data.time_black != null) setTimeBlack(data.time_black);
       if (data.game_over) { setGameOver({ result: data.result, reason: data.reason }); setDrawOffer(null); }
-      if (data.draw_offer) { setDrawOffer(data.draw_offer); return; }
-      if (data.draw_rejected) { setDrawOffer(null); return; }
-      setViewingBoard(null);
-      setViewingIndex(null);
-      setSelectedPiece(null);
     };
     return () => ws.close();
   }, [session]);
@@ -218,6 +231,7 @@ function App() {
         return;
       }
       sendMove(selectedPiece, [row, col]);
+      setSelectedPiece(null);
     }
   }
 
@@ -226,7 +240,7 @@ function App() {
   if (!session) return <Lobby onJoin={setSession} />;
 
   return (
-    <div style={{ display: 'flex', gap: '20px', userSelect: 'none' }}>
+    <div style={{ display: 'flex', gap: '20px', userSelect: 'none', justifyContent: 'center', padding: '20px', width: '100%', boxSizing: 'border-box', fontFamily: 'sans-serif', alignItems: 'flex-start' }}>
       {/* Pieza flotante que sigue el cursor durante el drag */}
       {dragPos && dragState.current && (
         <img
@@ -274,6 +288,8 @@ function App() {
                   ((piece.color === 'white' && whiteInCheck) || (piece.color === 'black' && blackInCheck));
                 const isBeingDragged = isDraggingFrom &&
                   isDraggingFrom[0] === row && isDraggingFrom[1] === col;
+                const isSelected = !viewingBoard && selectedPiece &&
+                  selectedPiece[0] === row && selectedPiece[1] === col;
                 return (
                   <div
                     key={`${row}-${col}`}
@@ -282,7 +298,11 @@ function App() {
                     style={{
                       width: 60,
                       height: 60,
-                      backgroundColor: isKingInCheck ? '#ff0000' : (isLight ? '#f0d9b5' : '#b58863'),
+                      backgroundColor: isKingInCheck
+                        ? '#ff0000'
+                        : isSelected
+                          ? (isLight ? '#f6f669' : '#baca2b')
+                          : (isLight ? '#f0d9b5' : '#b58863'),
                     }}
                   >
                     {piece && (
