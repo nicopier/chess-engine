@@ -169,7 +169,7 @@ async def websocket_endpoint(room_id: str, websocket: WebSocket, token: str = No
                     )
                 if result:
                     now = time.time()
-                    room = db.query(Room).filter(Room.id == room_id).first()
+                    db.refresh(room)
                     if room.last_move_at is not None:
                         elapsed = now - room.last_move_at
                         if game.current_turn.value == "black":
