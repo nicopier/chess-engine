@@ -85,8 +85,11 @@ async def timer_loop(room_id: str):
             if not room or room.status != "playing":
                 break
             game = manager.games.get(room_id)
-            if not game:
+            if not game or game.game_over:
                 break
+            if room.last_move_at is None:
+                await manager.broadcast(room_id, json.dumps(build_state(game, room)))
+                continue
             now = time.time()
             elapsed = now - room.last_move_at
             if game.current_turn.value == "white":
@@ -161,8 +164,7 @@ async def websocket_endpoint(room_id: str, websocket: WebSocket, token: str = No
                 if player_color is None or player_color != game.current_turn.value:
                     continue
                 async with manager.locks[room_id]:
-                    result = await asyncio.to_thread(
-                        game.make_move,
+                    result = game.make_move(
                         tuple(msg["from_pos"]), tuple(msg["to_pos"]), msg.get("promotion")
                     )
                 if result:
